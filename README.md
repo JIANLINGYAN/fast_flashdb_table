@@ -27,9 +27,7 @@ Flash适配层 (flash_adapter_*.c)
 ```bash
 # 方法1: 使用Makefile编译
 make                    # 编译核心测试
-make health_test        # 编译健康管理测试
 make test               # 运行核心测试
-make test-health        # 运行健康管理测试
 make test-all           # 运行所有测试
 
 # 方法2: 使用CMake编译
@@ -178,6 +176,3 @@ fast_flash/
 ├── compile_tests.bat      # Windows编译脚本
 └── README.md              # 本文档
 ```
-
-## 许可证
-本项目采用MIT许可证，详见LICENSE文件。
