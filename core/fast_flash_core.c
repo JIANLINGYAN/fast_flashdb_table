@@ -1244,7 +1244,31 @@ int fast_flash_write_table_data_by_index(const char *table_name, uint32_t index,
         return -2;  // 表示超出已有数据范围
     }
 
-    // 读取所有现有数据
+    // 读取指定index的现有数据，检查是否与传入数据一致
+    uint8_t *existing_data = malloc(header.struct_size);
+    if (!existing_data) {
+        TRACE_DEBUG("Memory allocation failed for reading existing data\n");
+        return -1;
+    }
+
+    uint32_t data_offset = table_info->addr + sizeof(header) + index * header.struct_size;
+    if (g_flash_ops->read(data_offset, existing_data, header.struct_size) != 0) {
+        TRACE_DEBUG("Failed to read existing data at index %u\n", index);
+        free(existing_data);
+        return -1;
+    }
+
+    // 检查数据是否一致，如果一致则直接返回成功，避免不必要的写操作
+    if (memcmp(existing_data, data, header.struct_size) == 0) {
+        TRACE_DEBUG("Data at index %u is identical, no need to write\n", index);
+        free(existing_data);
+        return 0;
+    }
+    
+    TRACE_DEBUG("Data at index %u is different, proceeding with write\n", index);
+    free(existing_data);
+
+    // 数据不一致，需要写入，读取所有现有数据
     uint8_t *all_data = malloc(header.data_len);
     if (!all_data) {
         TRACE_DEBUG("Memory allocation failed for table '%s'\n", table_name);

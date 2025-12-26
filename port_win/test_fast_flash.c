@@ -481,6 +481,81 @@ int test_new_table_management_functions(void) {
         return -1;
     }
     
+    // 测试7：优化测试 - 写入相同数据时应该直接返回成功
+    printf("\n--- Test 7: Optimized write with identical data ---\n");
+    
+    // 首先读取当前index 1的数据，然后写入完全相同的数据
+    test_data_t current_data;
+    if (fast_flash_read_table_data("MGRTEST", 1, &current_data, sizeof(test_data_t)) != 0) {
+        printf("Failed to read current data at index 1\n");
+        return -1;
+    }
+    printf("Current data at index 1: ");
+    print_test_data(&current_data);
+    
+    // 记录当前写入操作次数
+    win_flash_perf_stats_t stats_before;
+    win_flash_get_perf_stats(&stats_before);
+    printf("Write operations before identical write: %u\n", stats_before.write_operations);
+    
+    // 尝试写入与当前数据完全相同的数据
+    result = fast_flash_write_table_data_by_index("MGRTEST", 1, &current_data, sizeof(test_data_t));
+    if (result != 0) {
+        printf("Expected success (0) for identical data write, got %d\n", result);
+        return -1;
+    }
+    
+    // 检查写入操作次数是否没有增加（说明优化生效）
+    win_flash_perf_stats_t stats_after;
+    win_flash_get_perf_stats(&stats_after);
+    printf("Write operations after identical write: %u\n", stats_after.write_operations);
+    
+    if (stats_after.write_operations != stats_before.write_operations) {
+        printf("Write operations increased from %u to %u, optimization failed\n", 
+               stats_before.write_operations, stats_after.write_operations);
+        printf("This indicates that the identical data check did not work\n");
+        return -1;
+    }
+    
+    printf("Identical data write optimization test passed!\n");
+    printf("Write operations remained at %u (no unnecessary writes)\n", stats_before.write_operations);
+    
+    // 测试8：写入不同数据时应该正常执行
+    printf("\n--- Test 8: Normal write with different data ---\n");
+    
+    win_flash_get_perf_stats(&stats_before);
+    
+    test_data_t different_data = {700, "DifferentData", 333.33f, true};
+    result = fast_flash_write_table_data_by_index("MGRTEST", 1, &different_data, sizeof(test_data_t));
+    if (result != 0) {
+        printf("Failed to write different data, got %d\n", result);
+        return -1;
+    }
+    
+    win_flash_get_perf_stats(&stats_after);
+    
+    if (stats_after.write_operations <= stats_before.write_operations) {
+        printf("Write operations did not increase for different data, got %u\n", 
+               stats_after.write_operations);
+        return -1;
+    }
+    
+    printf("Different data write test passed!\n");
+    printf("Write operations increased from %u to %u (normal write executed)\n", 
+           stats_before.write_operations, stats_after.write_operations);
+    
+    // 验证不同数据写入成功
+    if (fast_flash_read_table_data("MGRTEST", 1, &read_data, sizeof(test_data_t)) != 0) {
+        printf("Failed to read different data after write\n");
+        return -1;
+    }
+    printf("Different data at index 1: ");
+    print_test_data(&read_data);
+    if (read_data.id != 700 || strcmp(read_data.name, "DifferentData") != 0) {
+        printf("Different data write failed\n");
+        return -1;
+    }
+    
     // 验证表数据完整性
     if (fast_flash_validate_table_data("MGRTEST") != 0) {
         printf("MGRTEST table validation failed\n");
