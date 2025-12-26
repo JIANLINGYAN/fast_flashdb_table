@@ -1123,17 +1123,21 @@ int fast_flash_validate_table_data(const char *table_name) {
         }
 
         int result = g_flash_ops->read(table_info->addr + sizeof(header), data, header.data_len);
-        if (result == 0) {
-            uint32_t calculated_crc = calculate_crc32(data, header.data_len);
-            if (calculated_crc != header.data_crc) {
-                TRACE_DEBUG("Data CRC mismatch for table '%s'\n", table_name);
-                free(data);
-                return -1;
-            }
+        if (result != 0) {
+            TRACE_DEBUG("Failed to read table data for validation\n");
+            free(data);
+            return result;
+        }
+        
+        uint32_t calculated_crc = calculate_crc32(data, header.data_len);
+        if (calculated_crc != header.data_crc) {
+            TRACE_DEBUG("Data CRC mismatch for table '%s'\n", table_name);
+            free(data);
+            return -1;
         }
 
         free(data);
-        return result;
+        return 0;
     }
 
     return 0;
